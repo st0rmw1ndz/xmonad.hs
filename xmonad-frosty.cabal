@@ -1,0 +1,43 @@
+cabal-version: 3.0
+name:          xmonad-frosty
+version:       0.1.0.0
+build-type:    Simple
+
+executable xmonad
+    main-is:            xmonad.hs
+    ghc-options:        -Wall -rtsopts -threaded -with-rtsopts=-N
+    build-depends:
+        , base
+        , containers
+        , X11
+        , xmonad >=0.18
+        , xmonad-contrib >=0.18
+
+    default-language:   GHC2021
+    default-extensions: ImportQualifiedPost
+
+executable xmobar-top
+    main-is:            xmobar-top.hs
+    ghc-options:
+        -O2 -Wall -Wcompat -Wincomplete-record-updates
+        -Wredundant-constraints -rtsopts -threaded -with-rtsopts=-N
+
+    build-depends:
+        , base
+        , xmobar >=0.48
+
+    default-language:   GHC2021
+    default-extensions: ImportQualifiedPost
+
+executable xmobar-bottom
+    main-is:            xmobar-bottom.hs
+    ghc-options:
+        -O2 -Wall -Wcompat -Wincomplete-record-updates
+        -Wredundant-constraints -rtsopts -threaded -with-rtsopts=-N
+
+    build-depends:
+        , base
+        , xmobar >=0.48
+
+    default-language:   GHC2021
+    default-extensions: ImportQualifiedPost
