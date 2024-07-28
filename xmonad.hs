@@ -26,8 +26,7 @@ import XMonad.Util.NamedScratchpad
 main :: IO ()
 main =
   xmonad
-    . withSB (statusBarProp "xmobar-bottom" $ pure myPP)
-    . withSB (statusBarProp "xmobar-top" $ pure myPP)
+    . withSB (statusBarProp "xmobar" $ pure myPP)
     . toggleFullFloatEwmhFullscreen
     . ewmhFullscreen
     . ewmh
