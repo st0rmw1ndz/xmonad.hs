@@ -23,45 +23,47 @@ import XMonad.Layout.Spacing
 import XMonad.StackSet qualified as W
 import XMonad.Util.NamedScratchpad
 
-myTerminal, myEditor :: String
+main :: IO ()
+main =
+  xmonad
+    . withSB (statusBarProp "xmobar-bottom" $ pure myPP)
+    . withSB (statusBarProp "xmobar-top" $ pure myPP)
+    . toggleFullFloatEwmhFullscreen
+    . ewmhFullscreen
+    . ewmh
+    $ def
+      { borderWidth = 1,
+        normalBorderColor = "#222222",
+        focusedBorderColor = "#80b7ff",
+        workspaces = ["1:term", "2:www", "3:mus", "4:chat", "5:rec", "6:dev", "7:vol", "8:sys", "9:file"],
+        startupHook = myStartupHook,
+        layoutHook = myLayoutHook,
+        manageHook = myManageHook,
+        handleEventHook = myEventHook,
+        mouseBindings = myMouseBindings,
+        keys = myKeys,
+        focusFollowsMouse = True,
+        clickJustFocuses = False,
+        modMask = mod4Mask
+      }
+
+myTerminal :: String
 myTerminal = "st"
-myEditor = "nvim"
-
-myWorkspaces :: [String]
-myWorkspaces = ["1:term", "2:www", "3:mus", "4:chat", "5:file", "6:dev", "7:vol", "8:sys", "9"]
-
-myBorderWidth :: Dimension
-myBorderWidth = 1
-
-myNormalBorderColor, myFocusedBorderColor :: String
-myNormalBorderColor = "#222222"
-myFocusedBorderColor = "#80b7ff"
-
-floatClasses, swallowClasses :: [String]
-floatClasses = ["Arandr", "Nsxiv"]
-swallowClasses = ["St", "XTerm"]
 
 myKeys :: XConfig Layout -> M.Map (KeyMask, KeySym) (X ())
 myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
   M.fromList $
     [ -- Common programs
       ((modMask, xK_Return), spawn myTerminal),
-      ((modMask, xK_p), spawnDmenu "dmenu_run"),
+      ((modMask, xK_p), spawn "ezrun"),
+      ((modMask .|. controlMask, xK_p), spawnDmenu "dmenu_run"),
       ((modMask, xK_w), spawn "firefox"),
-      ((modMask .|. controlMask, xK_q), spawn "qutebrowser"),
-      ((modMask, xK_e), spawnTerminal myEditor),
+      ((modMask, xK_e), spawnTerminal "nvim"),
       ((modMask, xK_f), spawnTerminal "lf"),
       ((modMask, xK_t), spawnTerminal "ncmpcpp"),
-      ((modMask .|. controlMask, xK_e), spawnTerminal "ncspot"),
       ((modMask, xK_v), spawnTerminal "pulsemixer"),
-      ((modMask .|. controlMask, xK_y), spawn "pavucontrol"),
-      ((modMask .|. controlMask, xK_semicolon), spawn "simplescreenrecorder"),
-      ((modMask .|. controlMask, xK_apostrophe), spawn "obs"),
-      ((modMask .|. controlMask, xK_o), spawnTerminal "cava"),
-      ((modMask .|. controlMask, xK_d), spawn "arandr"),
-      ((modMask .|. controlMask, xK_v), spawn "screenlayouts-open"),
       ((modMask .|. controlMask, xK_w), spawn "wallpapers-open"),
-      ((modMask .|. controlMask, xK_bracketright), spawn "find ~/pictures/screenshots -type f | sort -r | nsxiv -ti"),
+      ((modMask .|. controlMask, xK_d), spawn "arandr"),
       -- Screenshotting
       ((0, xK_Print), spawn "epicshot -cs select"),
       ((controlMask, xK_Print), spawn "epicshot -cs full"),
@@ -74,10 +76,10 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((modMask .|. controlMask, xK_F6), spawn "mpc next"),
       ((modMask .|. controlMask, xK_F7), spawn "mpc toggle"),
       ((modMask .|. controlMask, xK_F8), spawn "mpc stop"),
-      ((modMask .|. controlMask, xK_F9), spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && pipe_volume"),
-      ((modMask .|. controlMask, xK_F10), spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- && pipe_volume"),
-      ((modMask .|. controlMask, xK_F11), spawn "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ && pipe_volume"),
-      ((modMask .|. controlMask, xK_F12), spawn "run-i3lock"),
+      ((modMask .|. controlMask, xK_F9), spawn "volctrl toggle"),
+      ((modMask .|. controlMask, xK_F10), spawn "volctrl 5%-"),
+      ((modMask .|. controlMask, xK_F11), spawn "volctrl 5%+"),
+      ((modMask .|. controlMask, xK_F12), spawn "xscreensaver-command -l"),
       -- Special keys
       ((0, xF86XK_Explorer), spawnTerminal "nnn"),
       ((0, xF86XK_Search), spawnDmenu "dmenu_run"),
@@ -87,20 +89,11 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((0, xF86XK_AudioNext), spawn "mpc next"),
       ((0, xF86XK_AudioPlay), spawn "mpc toggle"),
       ((0, xF86XK_AudioStop), spawn "mpc stop"),
-      ((0, xF86XK_AudioMute), spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && pipe_volume"),
-      ((0, xF86XK_AudioLowerVolume), spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ 5%- && pipe_volume"),
-      ((0, xF86XK_AudioRaiseVolume), spawn "wpctl set-mute @DEFAULT_AUDIO_SINK@ 5%+ && pipe_volume"),
-      -- Layout switching
-      ( (modMask, xK_a),
-        submap . M.fromList $
-          [ ((modMask, xK_t), sendMessage $ JumpToLayout "Tall"),
-            ((modMask, xK_y), sendMessage $ JumpToLayout "Wide"),
-            ((modMask, xK_g), sendMessage $ JumpToLayout "Grid"),
-            ((modMask, xK_f), sendMessage $ JumpToLayout "Full"),
-            ((modMask, xK_s), sendMessage $ JumpToLayout "Spiral"),
-            ((modMask, xK_a), sendMessage NextLayout)
-          ]
-      ),
+      ((0, xF86XK_AudioMute), spawn "volctrl toggle"),
+      ((0, xF86XK_AudioLowerVolume), spawn "volctrl 5%-"),
+      ((0, xF86XK_AudioRaiseVolume), spawn "volctrl 5%+"),
+      -- Layout management
+      ((modMask, xK_Tab), sendMessage NextLayout),
       ((modMask, xK_b), sendMessage ToggleStruts),
       -- Basic window management
       ((modMask, xK_j), windows W.focusDown),
@@ -112,18 +105,15 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((modMask, xK_l), sendMessage Expand),
       ((modMask, xK_i), sendMessage $ IncMasterN 1),
       ((modMask, xK_d), sendMessage $ IncMasterN $ -1),
-      ((modMask, xK_s), windows W.focusMaster),
-      ((modMask .|. shiftMask, xK_s), windows W.swapMaster),
+      ((modMask, xK_a), windows W.focusMaster),
+      ((modMask .|. shiftMask, xK_a), windows W.swapMaster),
       -- Window actions
       ((modMask .|. shiftMask, xK_c), kill),
       ((modMask .|. shiftMask, xK_f), withFocused toggleFullFloat),
       ((modMask .|. shiftMask, xK_space), withFocused toggleFloat),
-      -- Scratchpads
-      ((modMask .|. controlMask, xK_Return), namedScratchpadAction myScratchPads "terminal"),
-      ((modMask .|. controlMask, xK_c), namedScratchpadAction myScratchPads "ncmpcpp"),
       -- Session
-      ((modMask .|. controlMask, xK_l), spawn "xscreensaver-command -lock"),
-      ((modMask .|. controlMask, xK_s), spawn "xmonad --restart && notify-send 'xmonad' 'Successfully recompiled and restarted.'"),
+      ((modMask .|. controlMask, xK_l), spawn "xscreensaver-command -l"),
+      ((modMask .|. controlMask, xK_s), spawn "xmonad --restart && notify-send xmonad 'Successfully recompiled and restarted.'"),
       ((modMask .|. controlMask, xK_Delete), io exitSuccess)
     ]
       -- Workspace viewing and shifting
@@ -145,7 +135,7 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
 
     spawnDmenu :: String -> X ()
     spawnDmenu x = do
-      spawn $ printf "%s -h %s -fn %s -nb '%s' -nf '%s' -sb '%s' -sf '%s'" x "17" "Terminus-8" "#1d2021" "#ebdbb2" "#fabd2f" "#282828"
+      spawn $ printf "%s -h %s -fn %s" x "17" "Terminus-8"
 
 myMouseBindings :: XConfig Layout -> M.Map (KeyMask, Button) (Window -> X ())
 myMouseBindings (XConfig {XMonad.modMask = modMask}) =
@@ -168,65 +158,33 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) =
 
 myLayoutHook =
   lessBorders OnlyScreenFloat $
-    spacing 8 $
-      avoidStruts $
-        tall ||| wide ||| grid ||| full
+    avoidStruts $
+      tall ||| full
   where
     tall =
       named "Tall" $
         Tall 1 (3 / 100) (1 / 2)
-    wide =
-      named "Wide" $
-        Mirror tall
-    grid =
-      named
-        "Grid"
-        Grid
     full =
       named
         "Full"
         Full
 
--- SCRATCHPADS ---------------------------------------------------------
-
-myScratchPads :: [NamedScratchpad]
-myScratchPads =
-  [ constructScratchpad "terminal" "scTerminal" Nothing,
-    constructScratchpad "ncmpcpp" "scNcmpcpp" (Just "ncmpcpp")
-  ]
-  where
-    constructScratchpad :: String -> String -> Maybe String -> NamedScratchpad
-    constructScratchpad name cls maybeExec =
-      NS
-        name
-        ( case maybeExec of
-            Just exec -> printf "%s -c %s -e %s" myTerminal cls exec
-            Nothing -> printf "%s -c %s" myTerminal cls
-        )
-        (className =? cls)
-        (customFloating $ W.RationalRect (3 / 5) (4 / 6) (1 / 5) (1 / 6))
-
--- HOOKS ---------------------------------------------------------------
-
 myManageHook :: ManageHook
 myManageHook =
   composeAll
-    [ placeHook simpleSmart,
-      manageDocks,
-      namedScratchpadManageHook myScratchPads,
+    [ manageDocks,
       insertPosition End Newer,
-      composeAll [className =? c --> doFloat | c <- floatClasses]
+      className =? "Arandr" --> doFloat,
+      className =? "Nsxiv" --> doFloat
     ]
 
 myEventHook :: Event -> X All
 myEventHook =
-  swallowEventHook (foldr1 (<||>) $ map (className =?) swallowClasses) (return True)
+  swallowEventHook (className =? "St" <||> className =? "XTerm") (return True)
 
 myStartupHook :: X ()
 myStartupHook = do
   spawn "initialize_pipes"
-
--- XMOBAR --------------------------------------------------------------
 
 myPP :: PP
 myPP =
@@ -243,29 +201,3 @@ myPP =
     sep, current :: String -> String
     sep = xmobarColor "#777777" ""
     current = xmobarColor "#6eadff" ""
-
--- MAIN ----------------------------------------------------------------
-
-main :: IO ()
-main =
-  xmonad
-    . withSB (statusBarProp "xmobar-top" $ pure myPP)
-    . withSB (statusBarProp "xmobar-bottom" $ pure myPP)
-    . toggleFullFloatEwmhFullscreen
-    . ewmhFullscreen
-    . ewmh
-    $ def
-      { borderWidth = myBorderWidth,
-        normalBorderColor = myNormalBorderColor,
-        focusedBorderColor = myFocusedBorderColor,
-        layoutHook = myLayoutHook,
-        workspaces = myWorkspaces,
-        manageHook = myManageHook,
-        handleEventHook = myEventHook,
-        startupHook = myStartupHook,
-        mouseBindings = myMouseBindings,
-        keys = myKeys,
-        focusFollowsMouse = True,
-        clickJustFocuses = False,
-        modMask = mod4Mask
-      }
