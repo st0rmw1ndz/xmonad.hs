@@ -28,29 +28,3 @@ executable xmobar
 
     default-language:   GHC2021
     default-extensions: ImportQualifiedPost
-
-executable xmobar-top
-    main-is:            xmobar-top.hs
-    ghc-options:
-        -O2 -Wall -Wcompat -Wincomplete-record-updates
-        -Wredundant-constraints -rtsopts -threaded -with-rtsopts=-N
-
-    build-depends:
-        , base
-        , xmobar >=0.48
-
-    default-language:   GHC2021
-    default-extensions: ImportQualifiedPost
-
-executable xmobar-bottom
-    main-is:            xmobar-bottom.hs
-    ghc-options:
-        -O2 -Wall -Wcompat -Wincomplete-record-updates
-        -Wredundant-constraints -rtsopts -threaded -with-rtsopts=-N
-
-    build-depends:
-        , base
-        , xmobar >=0.48
-
-    default-language:   GHC2021
-    default-extensions: ImportQualifiedPost
