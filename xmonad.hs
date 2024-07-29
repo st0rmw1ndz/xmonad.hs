@@ -7,21 +7,16 @@ import System.Exit
 import Text.Printf
 import XMonad
 import XMonad.Actions.CycleWS
-import XMonad.Actions.Submap
 import XMonad.Actions.ToggleFullFloat
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.EwmhDesktops
 import XMonad.Hooks.InsertPosition
 import XMonad.Hooks.ManageDocks (ToggleStruts (..), avoidStruts, manageDocks)
-import XMonad.Hooks.Place
 import XMonad.Hooks.StatusBar
 import XMonad.Hooks.WindowSwallowing
-import XMonad.Layout.Grid
 import XMonad.Layout.NoBorders
 import XMonad.Layout.Renamed (named)
-import XMonad.Layout.Spacing
 import XMonad.StackSet qualified as W
-import XMonad.Util.NamedScratchpad
 
 main :: IO ()
 main =
@@ -64,21 +59,19 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((modMask .|. controlMask, xK_w), spawn "wallpapers-open"),
       ((modMask .|. controlMask, xK_d), spawn "arandr"),
       -- Screenshotting
-      ((0, xK_Print), spawn "epicshot -cs select"),
-      ((controlMask, xK_Print), spawn "epicshot -cs full"),
-      ((modMask, xK_Print), spawn "epicshot -so select"),
-      ((modMask .|. controlMask, xK_r), spawn "epicshot -cs select"),
-      ((modMask .|. controlMask, xK_t), spawn "epicshot -cs full"),
-      ((modMask .|. controlMask, xK_g), spawn "epicshot -so select"),
+      ((0, xK_Print), spawn "screenshot -cs select"),
+      ((controlMask, xK_Print), spawn "screenshot -cs full"),
+      ((modMask .|. controlMask, xK_r), spawn "screenshot -cs select"),
+      ((modMask .|. controlMask, xK_t), spawn "screenshot -cs full"),
       -- Faux function row
       ((modMask .|. controlMask, xK_F5), spawn "mpc prev"),
       ((modMask .|. controlMask, xK_F6), spawn "mpc next"),
       ((modMask .|. controlMask, xK_F7), spawn "mpc toggle"),
       ((modMask .|. controlMask, xK_F8), spawn "mpc stop"),
-      ((modMask .|. controlMask, xK_F9), spawn "volctrl toggle"),
-      ((modMask .|. controlMask, xK_F10), spawn "volctrl 5%-"),
-      ((modMask .|. controlMask, xK_F11), spawn "volctrl 5%+"),
-      ((modMask .|. controlMask, xK_F12), spawn "xscreensaver-command -l"),
+      ((modMask .|. controlMask, xK_F9), spawn "volumectrl toggle"),
+      ((modMask .|. controlMask, xK_F10), spawn "volumectrl 5%-"),
+      ((modMask .|. controlMask, xK_F11), spawn "volumectrl 5%+"),
+      ((modMask .|. controlMask, xK_F12), spawn "xidlehook-client --socket $XIDLEHOOK_SOCK control --action trigger --timer 1"),
       -- Special keys
       ((0, xF86XK_Explorer), spawnTerminal "nnn"),
       ((0, xF86XK_Search), spawnDmenu "dmenu_run"),
@@ -88,9 +81,9 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((0, xF86XK_AudioNext), spawn "mpc next"),
       ((0, xF86XK_AudioPlay), spawn "mpc toggle"),
       ((0, xF86XK_AudioStop), spawn "mpc stop"),
-      ((0, xF86XK_AudioMute), spawn "volctrl toggle"),
-      ((0, xF86XK_AudioLowerVolume), spawn "volctrl 5%-"),
-      ((0, xF86XK_AudioRaiseVolume), spawn "volctrl 5%+"),
+      ((0, xF86XK_AudioMute), spawn "volumectrl toggle"),
+      ((0, xF86XK_AudioLowerVolume), spawn "volumectrl 5%-"),
+      ((0, xF86XK_AudioRaiseVolume), spawn "volumectrl 5%+"),
       -- Layout management
       ((modMask, xK_Tab), sendMessage NextLayout),
       ((modMask, xK_b), sendMessage ToggleStruts),
@@ -111,7 +104,7 @@ myKeys (XConfig {XMonad.modMask = modMask, XMonad.workspaces = workspaces}) =
       ((modMask .|. shiftMask, xK_f), withFocused toggleFullFloat),
       ((modMask .|. shiftMask, xK_space), withFocused toggleFloat),
       -- Session
-      ((modMask .|. controlMask, xK_l), spawn "xscreensaver-command -l"),
+      ((modMask .|. controlMask, xK_l), spawn "xidlehook-client --socket $XIDLEHOOK_SOCK control --action trigger --timer 1"),
       ((modMask .|. controlMask, xK_s), spawn "xmonad --restart && notify-send xmonad 'Successfully recompiled and restarted.'"),
       ((modMask .|. controlMask, xK_Delete), io exitSuccess)
     ]
@@ -156,7 +149,7 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) =
     ]
 
 myLayoutHook =
-  lessBorders OnlyScreenFloat $
+  noBorders $
     avoidStruts $
       tall ||| full
   where
@@ -173,9 +166,17 @@ myManageHook =
   composeAll
     [ manageDocks,
       insertPosition End Newer,
-      className =? "Arandr" --> doFloat,
-      className =? "Nsxiv" --> doFloat
+      title =? "Picture-in-Picture" --> doFloat,
+      liftX isFloating --> hasBorder True
     ]
+  where
+    isFloating :: X Bool
+    isFloating = do
+      wins <- gets windowset
+      return $
+        case W.peek wins of
+          Just w -> M.member w (W.floating wins)
+          Nothing -> False
 
 myEventHook :: Event -> X All
 myEventHook =
@@ -183,7 +184,8 @@ myEventHook =
 
 myStartupHook :: X ()
 myStartupHook = do
-  spawn "initialize_pipes"
+  spawn "update-pipe volume 'monitors volume'"
+  spawn "update-pipe weather 'weather'"
 
 myPP :: PP
 myPP =
